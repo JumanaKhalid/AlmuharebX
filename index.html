@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>المحارب س: مغامرة المحيط الأحمر</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@700;900&display=swap');
+
+        :root {
+            --clay-blue: #4facfe;
+            --clay-red: #ff4d4d;
+            --clay-gold: #ffcc33;
+            --text-dark: #2d3436;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a1a;
+            color: white;
+            font-family: 'Cairo', sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        #game-container {
+            position: relative;
+            border: 8px solid #333;
+            box-shadow: 20px 20px 60px #000, -5px -5px 20px #444;
+            border-radius: 30px;
+            background-color: #000;
+            overflow: hidden;
+            width: 1000px;
+            height: 600px;
+        }
+
+        canvas { display: block; }
+
+        /* Game Screens */
+        #start-screen, #win-screen, #lose-screen {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            text-align: center;
+            padding: 20px;
+        }
+
+        #win-screen, #lose-screen { display: none; }
+
+        h1 {
+            font-size: 45px;
+            margin-bottom: 20px;
+            background: white;
+            padding: 15px 30px;
+            border-radius: 20px;
+            box-shadow: inset 6px 6px 12px #cfd3da, inset -6px -6px 12px #ffffff, 8px 8px 15px rgba(0,0,0,0.2);
+            color: var(--clay-blue);
+        }
+
+        .btn {
+            padding: 15px 45px;
+            font-size: 24px;
+            background: var(--clay-blue);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 6px 6px 12px rgba(0,0,0,0.3), inset 4px 4px 8px rgba(255,255,255,0.4);
+            font-weight: 900;
+            margin: 15px;
+        }
+
+        .btn:hover { transform: scale(1.1); background: #3b8fd9; }
+
+        #ui-layer {
+            position: absolute;
+            top: 20px; left: 20px; right: 20px;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .stat-box {
+            background: white;
+            padding: 12px 25px;
+            border-radius: 20px;
+            font-size: 18px;
+            color: var(--text-dark);
+            box-shadow: 8px 8px 16px rgba(0,0,0,0.2), inset 4px 4px 6px #ffffff;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s;
+        }
+
+        .low-ammo {
+            background: #ffcccc;
+            color: #d63031;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        #overlay {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 85%;
+            max-width: 750px;
+            background: white;
+            border-radius: 30px;
+            padding: 40px;
+            text-align: center;
+            display: none;
+            z-index: 150;
+            box-shadow: 20px 20px 40px rgba(0,0,0,0.4), inset 10px 10px 20px #fff;
+            color: var(--text-dark);
+        }
+
+        #timer-bar {
+            height: 15px;
+            background: #eee;
+            width: 100%;
+            margin-top: 25px;
+            border-radius: 10px;
+            box-shadow: inset 2px 2px 5px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        #timer-fill { 
+            height: 100%; 
+            background: var(--clay-blue); 
+            width: 100%; 
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <!-- Start Screen -->
+        <div id="start-screen">
+            <h1>المحارب س:<br>مغامرة المحيط الأحمر</h1>
+            <button class="btn" id="start-btn" onclick="startGame()">ابدأ المغامرة الآن</button>
+            <p style="color:white; margin-top: 20px; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 10px;">استخدم الأسهم للتحرك والمسافة للإطلاق</p>
+        </div>
+
+        <!-- Victory Screen -->
+        <div id="win-screen">
+            <h1 style="color: #27ae60;">🏆 تم القضاء على التنين!</h1>
+            <p id="win-text" style="font-size: 22px; line-height: 1.6; color: white; padding: 0 40px;"></p>
+            <button class="btn" onclick="location.reload()">إعادة المغامرة</button>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="lose-screen">
+            <h1 style="color: var(--clay-red);">❌ تراجع المحارب!</h1>
+            <p id="lose-msg" style="font-size: 22px; margin-bottom: 30px; color: white; padding: 0 20px;"></p>
+            <button class="btn" onclick="location.reload()">محاولة ثانية</button>
+        </div>
+
+        <!-- UI Stats -->
+        <div id="ui-layer">
+            <div id="ammo-box" class="stat-box" style="border-bottom: 4px solid var(--clay-blue)">🛡️ ذخيرة المناعة المعلوماتية: <span id="ammo-val" style="color:var(--clay-blue)">50</span></div>
+            <div class="stat-box" style="border-bottom: 4px solid var(--clay-gold)">📜 الرسائل: <span id="info-val" style="color:#f39c12">0 / 12</span></div>
+        </div>
+        
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- Info Overlay -->
+        <div id="overlay">
+            <h2 id="msg-title" style="color:var(--clay-blue); font-size: 30px;">👵 نصيحة الجدة متفائلة</h2>
+            <p id="msg-body" style="font-size:24px; line-height:1.6; font-weight: bold; white-space: pre-line;"></p>
+            <div id="timer-bar"><div id="timer-fill"></div></div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const ammoEl = document.getElementById('ammo-val');
+        const ammoBox = document.getElementById('ammo-box');
+        const infoEl = document.getElementById('info-val');
+        const overlay = document.getElementById('overlay');
+        const msgBody = document.getElementById('msg-body');
+        const timerFill = document.getElementById('timer-fill');
+        const startScreen = document.getElementById('start-screen');
+        const winScreen = document.getElementById('win-screen');
+        const loseScreen = document.getElementById('lose-screen');
+        const loseMsg = document.getElementById('lose-msg');
+
+        canvas.width = 1000;
+        canvas.height = 600;
+
+        // Sound System
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSfx(freq, type, duration) {
+            if (audioCtx.state === 'suspended') return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        // Background Handling
+        const bgImage = new Image();
+        bgImage.src = 'Gemini_Generated_Image_4m10rp4m10rp4m10.png'; 
+        let bgLoaded = false;
+        bgImage.onload = () => { bgLoaded = true; };
+        bgImage.onerror = () => { bgLoaded = false; };
+
+        // Educational Content
+        const infoTexts = [
+            "1. سنتعلم ما هي أسباب هجوم التنين على المحيط الأحمر؟\nكيف يمكن أن يتكون؟\nلأننا إذا علمنا بعض الأسباب التي أدت إلى سيطرته على المحيط\nأمكننا اتقاء شره وتلافي هجومه بإذن الله تعالى.",
+            "2. قد يتسبب التعرض لإشعاع عالٍ في غزو التنين للمحيط الأحمر مثل التعرض لمصنع للطاقة النووية.",
+            "3. وجود اعتلالات ومشكلات في المحيط الأحمر يمكن أن يسبب هجوم التنين عليه.",
+            "4. انتشار الفيروسات في المحيط الأحمر وكثرة التعرض لها؛ يسهل على التنين مهاجمته والسيطرة عليه.",
+            "5. سنتعلم كيف يمكن أن نحمي أنفسنا بإذن الله تعالى من هجوم التنين على المحيط الأحمر؟ فكما يقال: “درهمُ وقاية خيرٌ من قِنْطار عِلاج “.",
+            "6. تحصين المحيط الأحمر من العدوى الفيروسية وعدم تعريضه للإشعاع الخطير يمكنه أن يقيه من هجوم التنين بإذن الله تعالى أو يقلل فرص الهجوم.",
+            "7. إمداد المحيط الأحمر بالغذاء الصحي يساهم بإذن الله تعالى في حمايته من فتك التنين.",
+            "8. ممارسة الرياضة باستمرار تقي المحيط الأحمر من هجوم التنين. تسألني كيف؟ وما علاقة الرياضة؟ لأن المحيط الأحمر يجري في عروقك، فمسؤوليتك هي الحفاظ على نقاوته بطرق عدة أهمها: الرياضة والغذاء الصحي والبعد عن الخطر.",
+            "9. سنتعلم كيف يمكن القضاء على التنين في حال مهاجمة المحيط الأحمر -لا قدَّر الله- وما هي الأسلحة التي نقضي عليه بها؟",
+            "10. العلاج الإشعاعي أحد الأسلحة التي يمكن بها القضاء على التنين وإنقاذ المحيط الأحمر.",
+            "11. الخلايا الجذعية أحد الأسلحة التي يمكن بها القضاء على التنين وإنقاذ المحيط الأحمر.",
+            "12. العلاج المناعي أحد الأسلحة التي يمكن بها القضاء على التنين وإنقاذ المحيط الأحمر."
+        ];
+
+        let gameRunning = false;
+        let state = {
+            ammo: 50,
+            infoIndex: 0,
+            isPaused: false,
+            victoryMode: false,
+            dragonHealth: 40,
+            maxDragonHealth: 40,
+            pulse: 0,
+            lastShot: 0
+        };
+
+        const player = { x: 100, y: 300, size: 50, speed: 7, color: '#4facfe' };
+        const dragon = { x: 800, y: 300, size: 160, speed: 2.5, color: '#ff4d4d', scale: 1.0, alpha: 1.0 };
+        let items = [];
+        let flames = [];
+        let bullets = [];
+
+        function initItems() {
+            items = [];
+            for (let i = 0; i < 12; i++) {
+                items.push({
+                    x: 150 + Math.random() * 750,
+                    y: 100 + Math.random() * 400,
+                    collected: false
+                });
+            }
+        }
+
+        const keys = {};
+        window.addEventListener('keydown', e => keys[e.code] = true);
+        window.addEventListener('keyup', e => keys[e.code] = false);
+
+        function startGame() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            startScreen.style.display = 'none';
+            gameRunning = true;
+            initItems();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function gameOver(reason) {
+            gameRunning = false;
+            loseMsg.innerText = reason;
+            loseScreen.style.display = 'flex';
+            playSfx(80, 'sawtooth', 0.5);
+        }
+
+        function showMessage(text) {
+            state.isPaused = true;
+            msgBody.innerText = text;
+            overlay.style.display = 'block';
+            timerFill.style.width = '100%';
+            playSfx(440, 'sine', 0.3);
+            
+            let start = Date.now();
+            const duration = 6000;
+            const timer = setInterval(() => {
+                let elapsed = Date.now() - start;
+                let progress = Math.max(0, 100 - (elapsed / duration * 100));
+                timerFill.style.width = progress + '%';
+                
+                if (elapsed >= duration || !gameRunning) {
+                    clearInterval(timer);
+                    overlay.style.display = 'none';
+                    state.isPaused = false;
+                    state.infoIndex++;
+                    state.ammo += 20;
+                    updateAmmoUI();
+                    infoEl.innerText = state.infoIndex + " / 12";
+                    if (state.infoIndex === 12) finalBattleTrigger();
+                }
+            }, 50);
+        }
+
+        function updateAmmoUI() {
+            ammoEl.innerText = state.ammo;
+            if (state.ammo < 15) {
+                ammoBox.classList.add('low-ammo');
+            } else {
+                ammoBox.classList.remove('low-ammo');
+            }
+
+            if (state.ammo <= 0 && gameRunning) {
+                gameOver("لقد نفدت ذخيرة المناعة المعلوماتية تماماً! لا يمكن للمحارب س البقاء قوياً دون وعي كافٍ.");
+            }
+        }
+
+        function finalBattleTrigger() {
+            state.isPaused = true;
+            document.getElementById('msg-title').innerText = "⚔️ رسالة الاستعداد";
+            msgBody.innerHTML = `<span style="color:var(--clay-red); font-size: 28px;">حان وقت مواجهة التنين!</span><br>كن مستعداً بكل ذخيرتك المعلوماتية لكي تتمكن من القضاء عليه بإذن الله تعالى، وتحرير المحيط الأحمر من سيطرته.`;
+            overlay.style.display = 'block';
+            document.getElementById('timer-bar').style.display = 'none';
+            setTimeout(() => {
+                overlay.style.display = 'none';
+                state.isPaused = false;
+                state.victoryMode = true;
+            }, 5000);
+        }
+
+        function update() {
+            if (!gameRunning || state.isPaused) return;
+            state.pulse += 0.1;
+
+            // Player Movement
+            if (keys['ArrowUp'] && player.y > 40) player.y -= player.speed;
+            if (keys['ArrowDown'] && player.y < canvas.height - 40) player.y += player.speed;
+            if (keys['ArrowLeft'] && player.x > 40) player.x -= player.speed;
+            if (keys['ArrowRight'] && player.x < canvas.width - 40) player.x += player.speed;
+
+            // Shooting logic
+            if (state.victoryMode && keys['Space'] && Date.now() - state.lastShot > 180) {
+                if (state.ammo > 0) {
+                    bullets.push({ x: player.x + 30, y: player.y, vx: 18 });
+                    state.ammo--;
+                    updateAmmoUI();
+                    state.lastShot = Date.now();
+                    playSfx(600, 'square', 0.1);
+                }
+            }
+
+            if (state.victoryMode && state.ammo <= 0 && bullets.length === 0 && state.dragonHealth > 0) {
+                gameOver("لقد استنفدت كل الذخيرة في المعركة النهائية ولم يهزم التنين بعد! حاول أن تكون أكثر دقة في المرة القادمة.");
+                return;
+            }
+
+            // Dragon Logic
+            const dx = player.x - dragon.x;
+            const dy = player.y - dragon.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            
+            if (!state.victoryMode) {
+                dragon.x += (dx / dist) * dragon.speed;
+                dragon.y += (dy / dist) * dragon.speed;
+            } else {
+                dragon.y += Math.sin(state.pulse) * 6;
+                dragon.x += (750 - dragon.x) * 0.03;
+            }
+
+            // --- إضعاف هجوم التنين تدريجياً ---
+            // نسبة الصحة الحالية (1.0 كاملة، 0.1 ضعيفة جداً)
+            const healthRatio = state.dragonHealth / state.maxDragonHealth;
+            
+            // 1. تقليل فرصة الإطلاق (تصبح أقل مع نقص الصحة)
+            const fireChance = 0.01 + (0.04 * healthRatio); 
+            
+            if (Math.random() < fireChance) {
+                const angle = Math.atan2(dy, dx);
+                // 2. تقليل سرعة اللهب مع ضعف التنين
+                const speedMult = 0.5 + (0.5 * healthRatio);
+                flames.push({ 
+                    x: dragon.x, 
+                    y: dragon.y, 
+                    vx: Math.cos(angle) * (7 * speedMult), 
+                    vy: Math.sin(angle) * (7 * speedMult) 
+                });
+            }
+
+            // Bullets Collision
+            bullets.forEach((b, i) => {
+                b.x += b.vx;
+                // حساب نصف القطر الفعلي بناءً على المقياس (سهولة الإصابة)
+                const hitRadius = (dragon.size * 0.45) * dragon.scale;
+                if (Math.hypot(b.x - dragon.x, b.y - dragon.y) < hitRadius) {
+                    bullets.splice(i, 1);
+                    state.dragonHealth--;
+                    // 3. تقليص الحجم ليصبح أضعف بصرياً (لكن بحد أدنى ليبقى هدفاً)
+                    dragon.scale = Math.max(0.4, state.dragonHealth / state.maxDragonHealth);
+                    dragon.alpha = 0.5 + (0.5 * healthRatio);
+                    playSfx(150, 'sawtooth', 0.2);
+                    
+                    if (state.dragonHealth <= 0) {
+                        gameRunning = false;
+                        document.getElementById('win-text').innerText = "انتصر المحارب س بفضل الله سبحانه وتعالى ثم بفضل ذخيرته المعلوماتية! لقد تم القضاء على التنين وتحرير المحيط..\n\nولكن.. هل عرفت من هو المحارب س؟ تحقق من إجابتك مع الجدة متفائلة!";
+                        winScreen.style.display = 'flex';
+                        playSfx(880, 'sine', 1);
+                    }
+                }
+                if (b.x > canvas.width) bullets.splice(i, 1);
+            });
+
+            // Flames Collision
+            flames.forEach((f, i) => {
+                f.x += f.vx; f.y += f.vy;
+                if (Math.hypot(f.x - player.x, f.y - player.y) < player.size/2) {
+                    // 4. تقليل الضرر الذي يسببه اللهب مع ضعف التنين
+                    let damage = Math.ceil(5 * healthRatio);
+                    if (damage < 1) damage = 1; 
+
+                    state.ammo = Math.max(0, state.ammo - damage);
+                    updateAmmoUI();
+                    flames.splice(i, 1);
+                    playSfx(100, 'sine', 0.3);
+                }
+                if (f.x < 0 || f.x > canvas.width || f.y < 0 || f.y > canvas.height) flames.splice(i, 1);
+            });
+
+            // Items Collision
+            items.forEach(m => {
+                if (!m.collected && Math.hypot(player.x - m.x, player.y - m.y) < player.size) {
+                    m.collected = true;
+                    showMessage(infoTexts[state.infoIndex]);
+                }
+            });
+        }
+
+        // Clay Style Drawing Helper
+        function drawClayShape(x, y, r, color, alpha = 1.0, isDragon = false) {
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.shadowColor = 'rgba(0,0,0,0.4)';
+            ctx.shadowBlur = 15;
+            ctx.shadowOffsetX = 8;
+            ctx.shadowOffsetY = 8;
+
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            const steps = 15;
+            for (let i = 0; i <= steps; i++) {
+                let a = (i/steps) * Math.PI * 2;
+                let wobble = Math.sin(a * (isDragon ? 4 : 3) + state.pulse) * (r * 0.1);
+                let rx = x + Math.cos(a) * (r + wobble);
+                let ry = y + Math.sin(a) * (r + wobble);
+                if (i === 0) ctx.moveTo(rx, ry); else ctx.lineTo(rx, ry);
+            }
+            ctx.fill();
+
+            // Highlight
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+            ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+            ctx.lineWidth = r * 0.2;
+            ctx.beginPath();
+            ctx.arc(x, y, r * 0.7, Math.PI * 1.2, Math.PI * 1.8);
+            ctx.stroke();
+
+            // Eyes
+            if (!isDragon) {
+                ctx.fillStyle = "white";
+                ctx.beginPath(); ctx.arc(x + r*0.3, y - r*0.2, r*0.15, 0, 7); ctx.fill();
+                ctx.fillStyle = "black";
+                ctx.beginPath(); ctx.arc(x + r*0.35, y - r*0.2, r*0.05, 0, 7); ctx.fill();
+            } else {
+                ctx.fillStyle = "white";
+                ctx.beginPath(); ctx.arc(x - r*0.4, y - r*0.2, r*0.2, 0, 7); ctx.fill();
+                ctx.fillStyle = "#ffcc33";
+                ctx.beginPath(); ctx.arc(x - r*0.45, y - r*0.2, r*0.1, 0, 7); ctx.fill();
+            }
+            ctx.restore();
+        }
+
+        // Draw Dragon Health Bar
+        function drawDragonUI() {
+            if (!state.victoryMode || state.dragonHealth <= 0) return;
+            
+            const barW = 120;
+            const barH = 10;
+            const x = dragon.x - barW/2;
+            const y = dragon.y - (dragon.size * dragon.scale)/2 - 25;
+
+            // Background
+            ctx.fillStyle = "rgba(0,0,0,0.5)";
+            ctx.roundRect ? ctx.beginPath() || ctx.roundRect(x, y, barW, barH, 5) || ctx.fill() : ctx.fillRect(x, y, barW, barH);
+            
+            // Health Fill
+            const fillW = (state.dragonHealth / state.maxDragonHealth) * barW;
+            ctx.fillStyle = state.dragonHealth < 10 ? "#ff4d4d" : "#ffcc33";
+            ctx.roundRect ? ctx.beginPath() || ctx.roundRect(x, y, fillW, barH, 5) || ctx.fill() : ctx.fillRect(x, y, fillW, barH);
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (bgLoaded) {
+                ctx.drawImage(bgImage, -60, -60, canvas.width + 120, canvas.height + 120);
+            } else {
+                let grad = ctx.createRadialGradient(500, 300, 50, 500, 300, 600);
+                grad.addColorStop(0, '#300'); grad.addColorStop(1, '#000');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            items.forEach(m => { 
+                if(!m.collected) {
+                    drawClayShape(m.x, m.y, 22, '#ffcc33');
+                    ctx.fillStyle = "white";
+                    ctx.font = "bold 16px Cairo";
+                    ctx.textAlign = "center";
+                    ctx.fillText("ℹ️", m.x, m.y + 7);
+                }
+            });
+
+            bullets.forEach(b => drawClayShape(b.x, b.y, 12, '#4facfe'));
+            flames.forEach(f => drawClayShape(f.x, f.y, 14, '#e67e22'));
+            
+            if(state.dragonHealth > 0) {
+                drawClayShape(dragon.x, dragon.y, (dragon.size/2) * dragon.scale, dragon.color, dragon.alpha, true);
+                drawDragonUI();
+            }
+            drawClayShape(player.x, player.y, player.size/2, player.color);
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            if(gameRunning) requestAnimationFrame(gameLoop);
+        }
+
+        draw();
+    </script>
+</body>
+</html>
